@@ -72,20 +72,20 @@ class Follower:
     
 ## Define colour 'Blue' Identifiers
     # Adjust values accordingly
-    #lower_blue = numpy.array([ 50,  100,  0])
-    #upper_blue = numpy.array([180, 255, 255])
+    #lower_blue = numpy.array([ 120,  60,  55])
+    #upper_blue = numpy.array([140, 255, 250])
     #maskBlue = cv2.inRange(hsv, lower_blue, upper_blue) 
     
 ## Define colour 'Yellow' Identifiers
     # Adjust values accordingly
-    #lower_yellow = numpy.array([ 50,  100,  0])
-    #upper_yellow = numpy.array([180, 255, 255])
+    #lower_yellow = numpy.array([ 30,  100,  100])
+    #upper_yellow = numpy.array([255, 255, 255])
     #maskYellow = cv2.inRange(hsv, lower_yellow, upper_yellow) 
 
 ## Define colour 'red' Identifiers
     # Adjust values accordingly
-    #lower_red = numpy.array([ 50,  100,  0])
-    #upper_red = numpy.array([180, 255, 255])
+    #lower_red = numpy.array([ 0,  50,  50])
+    #upper_red = numpy.array([5, 255, 255])
     #maskRed = cv2.inRange(hsv, lower_red, upper_red) 
     
     h, w, d = image.shape
