@@ -1,9 +1,10 @@
 #!/bin/bash
 
+# Open appropriate web pages
 if [ -n $BROWSER ]; then
   $BROWSER 'https://github.com/lukeexton96/Robotics'
 elif which xdg-open > /dev/null; then
-  xdg-open 'http://wwww.google.com'
+  xdg-open 'https://github.com/LCAS/teaching/wiki/CMP3103M'
 elif which gnome-open > /dev/null; then
   gnome-open 'http://wwww.google.com'
 else
