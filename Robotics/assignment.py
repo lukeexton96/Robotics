@@ -48,15 +48,16 @@ class Follower:
     self.bridge = cv_bridge.CvBridge()
     cv2.namedWindow("window", 1)
     
-    self.twist = Twist()
-    self.laser.ranges = [0]
-    self.laser = LaserScan()
-   
+    
 ## For SIMULATION (for real life - remove '/turtlbot')
     self.image_sub = rospy.Subscriber('/turtlebot/camera/rgb/image_raw', Image, self.image_callback)
-    self.cmd_vel_pub = rospy.Publisher('/turtlebot/cmd_vel', Twist, queue_size=1)
     self.infrared_camera = rospy.Subscriber('/turtlebot/scan', LaserScan, self.laserRange)    
+    self.cmd_vel_pub = rospy.Publisher('/turtlebot/cmd_vel', Twist, queue_size=1)
 
+    self.twist = Twist()
+    self.laser.ranges = []
+    self.laser = LaserScan()
+   
     
   def laserRange(self, data):
       self.laser = data
@@ -66,27 +67,24 @@ class Follower:
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
 ## Define colour 'Green' Identifiers
-    lower_green = numpy.array([ 50,  100,  0])
+    lower_green = numpy.array([ 50,  100,  100])
     upper_green = numpy.array([180, 255, 255])
     mask = cv2.inRange(hsv, lower_green, upper_green)
     
 ## Define colour 'Blue' Identifiers
-    # Adjust values accordingly
-    #lower_blue = numpy.array([ 120,  60,  55])
-    #upper_blue = numpy.array([140, 255, 250])
-    #maskBlue = cv2.inRange(hsv, lower_blue, upper_blue) 
+    lower_blue = numpy.array([ 120,  100,  100])
+    upper_blue = numpy.array([140, 255, 250])
+    maskBlue = cv2.inRange(hsv, lower_blue, upper_blue) 
     
 ## Define colour 'Yellow' Identifiers
-    # Adjust values accordingly
-    #lower_yellow = numpy.array([ 30,  100,  100])
-    #upper_yellow = numpy.array([255, 255, 255])
-    #maskYellow = cv2.inRange(hsv, lower_yellow, upper_yellow) 
+    lower_yellow = numpy.array([ 30,  100,  100])
+    upper_yellow = numpy.array([255, 255, 255])
+    maskYellow = cv2.inRange(hsv, lower_yellow, upper_yellow) 
 
 ## Define colour 'red' Identifiers
-    # Adjust values accordingly
-    #lower_red = numpy.array([ 0,  50,  50])
-    #upper_red = numpy.array([5, 255, 255])
-    #maskRed = cv2.inRange(hsv, lower_red, upper_red) 
+    lower_red = numpy.array([ 0,  100,  100])
+    upper_red = numpy.array([5, 255, 255])
+    maskRed = cv2.inRange(hsv, lower_red, upper_red) 
     
     h, w, d = image.shape
     # cut light
@@ -97,7 +95,6 @@ class Follower:
     
     M = cv2.moments(mask)
     
-    # Causing current issue - '14/03/17'    
     Distance = self.laser.ranges
     
     print min(Distance)
