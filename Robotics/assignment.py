@@ -7,40 +7,6 @@ from geometry_msgs.msg import Twist
  
 wheel_radius = 0.05
 robot_radius = 0.25
-     
-class w4:
-     
-    def forward_kinematics(self,w_l, w_r):
-        c_l = wheel_radius * w_l
-        c_r = wheel_radius * w_r
-        v = (c_l + c_r) / 2
-        a = (c_l - c_r) / robot_radius
-        return (v, a)
-     
-    def inverse_kinematics(self,v, a):
-        c_l = v + (robot_radius * a) / 2
-        c_r = v - (robot_radius * a) / 2
-        w_l = c_l / wheel_radius
-        w_r = c_r / wheel_radius
-        return (w_l, w_r)
- 
-    def inverse_kinematics_from_twist(self,t):
-        return w4.inverse_kinematics(t.linear.x, t.angular.z)   
-         
-    def __init__(self): 
-        rospy.init_node('kinematics')              
-        self.vleft_sub = rospy.Subscriber("/turtlebot/wheel_vel_left", Float32, self.callback)
-        self.cmdvel_pub = rospy.Publisher("/turtlebot/cmd_vel", Twist)
-         
-    def callback(self, data):
-        print data.data
-         
-        (v, a) = self.forward_kinematics(data.data, 0.0)
-        tmsg = Twist()
-        tmsg.linear.x = v
-        tmsg.angular.z = a
-        self.cmdvel_pub.publish(tmsg)
-        print v,a
 
 class Follower:
   def __init__(self):
@@ -49,7 +15,7 @@ class Follower:
     cv2.namedWindow("window", 1)
     
     
-## For SIMULATION (for real life - remove '/turtlbot')
+## For SIMULATION 
     self.image_sub = rospy.Subscriber('/turtlebot/camera/rgb/image_raw', Image, self.image_callback)
     self.infrared_camera = rospy.Subscriber('/turtlebot/scan', LaserScan, self.laserRange)    
     self.cmd_vel_pub = rospy.Publisher('/turtlebot/cmd_vel', Twist, queue_size=1)
@@ -69,7 +35,7 @@ class Follower:
 ## Define colour 'Green' Identifiers
     lower_green = numpy.array([ 50,  100,  100])
     upper_green = numpy.array([180, 255, 255])
-    mask = cv2.inRange(hsv, lower_green, upper_green)
+    maskGreen = cv2.inRange(hsv, lower_green, upper_green)
     
 ## Define colour 'Blue' Identifiers
     lower_blue = numpy.array([ 120,  100,  100])
@@ -85,9 +51,13 @@ class Follower:
     lower_red = numpy.array([ 0,  100,  100])
     upper_red = numpy.array([5, 255, 255])
     maskRed = cv2.inRange(hsv, lower_red, upper_red) 
+
+## Set mask to contain only the colours defined above
+    mask = #something
     
     h, w, d = image.shape
-    # cut light
+    
+## Cut light
     search_top = 3*h/4 - 175
     search_bottom = 3*h/4 + 50
     mask[0:search_top, 0:w] = 0
@@ -97,21 +67,24 @@ class Follower:
     
     Distance = self.laser.ranges
     
-    print min(Distance)
+## Print distance info    
+    #print min(Distance)
+    
     if M['m00'] > 0:
-      if min(Distance) > 1 or math.isnan(Distance[len(Distance)/2]):  
+      if min(Distance) > 1 or math.isnan(min(Distance)):  
           cx = int(M['m10']/M['m00'])
           cy = int(M['m01']/M['m00'])
           cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
           # BEGIN CONTROL
           err = cx - w/2
-          self.twist.linear.x = 0.2
+          self.twist.linear.x = 0.6
           self.twist.angular.z = -float(err) / 100
           self.cmd_vel_pub.publish(self.twist)
-          # END CONTROL
-          cv2.imshow("window", image)
-          cv2.imshow("window", mask)
-          cv2.waitKey(1)         
+          
+# END CONTROL
+    cv2.imshow("window", image)
+    cv2.imshow("window", mask)
+    cv2.waitKey(1)   
     
     # Class selector used to run class
 if __name__ == "__main__":
