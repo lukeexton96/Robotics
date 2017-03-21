@@ -34,6 +34,6 @@ roslaunch uol_turtlebot_simulator object-search-training.launch &
 # open new terminal
 
 # launch spyder
-sypder &
+spyder &
 
 # Maybe? Open python script too

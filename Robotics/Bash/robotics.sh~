@@ -16,8 +16,11 @@ fi
 echo Starting ROSCORE...
 roscore &
 
-# update the packages installed on your computer, to get the "training arena"
+# Open another console tab
+# (COMMANDS HERE)
 
+# Need to open another tab to run these on
+# update the packages installed on your computer, to get the "training arena"
 sudo apt-get update
 computing
 
