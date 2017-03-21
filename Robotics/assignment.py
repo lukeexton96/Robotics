@@ -14,6 +14,7 @@ class Follower:
     self.bridge = cv_bridge.CvBridge()
     cv2.namedWindow("window", 1)
     
+    colours = {'Green': False, 'Blue': False, 'Yellow': False, 'Red': False}
     
 ## For SIMULATION 
     self.image_sub = rospy.Subscriber('/turtlebot/camera/rgb/image_raw', Image, self.image_callback)
@@ -27,9 +28,12 @@ class Follower:
     
   def laserRange(self, data):
       self.laser = data
+      
+  def testColour(self, data):
+      # test colour
     
   def image_callback(self, msg):
-    image = self.bridge.imgmsg_to_cv2(msg,desired_encoding='bgr8')
+    image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
 ## Define colour 'Green' Identifiers
@@ -53,17 +57,17 @@ class Follower:
     maskRed = cv2.inRange(hsv, lower_red, upper_red) 
 
 ## Set mask to contain only the colours defined above
-    mask = #something
+    masks = maskGreen + maskBlue + maskYellow + maskRed
     
     h, w, d = image.shape
     
 ## Cut light
     search_top = 3*h/4 - 175
     search_bottom = 3*h/4 + 50
-    mask[0:search_top, 0:w] = 0
-    mask[search_bottom:h, 0:w] = 0
+    masks[0:search_top, 0:w] = 0
+    masks[search_bottom:h, 0:w] = 0
     
-    M = cv2.moments(mask)
+    M = cv2.moments(masks)
     
     Distance = self.laser.ranges
     
@@ -83,7 +87,7 @@ class Follower:
           
 # END CONTROL
     cv2.imshow("window", image)
-    cv2.imshow("window", mask)
+    cv2.imshow("window", masks)
     cv2.waitKey(1)   
     
     # Class selector used to run class
