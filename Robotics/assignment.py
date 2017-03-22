@@ -29,36 +29,70 @@ class Follower:
 
     self.twist = Twist()
     self.laser.ranges = []
-    
 
   def laserRange(self, data):
       self.laser = data
+      
+#####################################################################################
   
-  def whatColour(self, image, cx, cy):
-      # get Hue Value
-      hueVal = image[cx, cy, 0]
+  def pillarFound(self, colour, infoFlag):
       # Green 
-      if 40 <= hueVal <= 60:
+      if colour == 'green' and infoFlag == False:
           self.greenFound = True
-          return 'Green Found!'
+          print 'Green Found!'
       # Blue
-      elif 100 <= hueVal <= 120: 
+      elif colour == 'blue' and infoFlag == False: 
           self.blueFound = True
-          return 'Blue Found!'
+          print 'Blue Found!'
       # Yellow
-      elif 25 <= hueVal <= 30:
+      elif colour == 'yellow' and infoFlag == False:
           self.yellowFound = True
-          return 'Yellow Found!'
+          print 'Yellow Found!'
       # Red
-      elif 0 <= hueVal <= 4:
+      elif colour == 'red' and infoFlag == False:
           self.redFound = True
-          return 'Red Found!'
+          print 'Red Found!'
       else:
-          return 'No colour on spectrum found'
+          print 'No colour on spectrum found'
+          
+#####################################################################################
+          
+  def setMask(self, hsv, lowerBound, upperBound):
+      mask = cv2.inRange(hsv, lowerBound, upperBound)    
+      return mask
+
+######################################################################################  
+
+  def completeMessage(self):
+      if self.greenFound == True and self.blueFound == True and self.yellowFound == True and self.redFound == True:
+          print "All monuments found. End of session."
+
+######################################################################################
   
+  def control(self, M, image):
+      
+      h, w, d = image.shape
+      
+      if M['m00'] > 0:
+          if min(self.distance) > 0.5 or math.isnan(min(self.distance)):  
+              
+            ## Centre 'x' pixel 
+              cx = int(M['m10']/M['m00'])
+              
+            ## BEGIN CONTROL
+              err = cx - w / 2
+              self.twist.linear.x = 0.6
+              self.twist.angular.z = -float(err) / 100
+              self.cmd_vel_pub.publish(self.twist)
+          
+#######################################################################################  
   def image_callback(self, msg):
-    
-    image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+     ## error handling
+    try:
+        image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+    except CvBridgeError, e:
+        print e
+        
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
     ## Arrays to hold values 
@@ -67,7 +101,7 @@ class Follower:
     
     # initialise combined mask cv2 object
     combinedMasks = cv2.inRange(hsv, numpy.array([180, 255, 255]), numpy.array([180, 255, 255]))
-    self.distance = [0]    
+    self.distance = 0    
     
     
     #   Upper and Lower bounds defined as
@@ -75,6 +109,14 @@ class Follower:
 #   [1] = Blue
 #   [2] = Yellow
 #   [3] = Red
+    
+    self.distance = self.laser.ranges
+    
+    middle = (len(self.distance) - 1) / 2
+    mid = self.distance[middle]
+    
+    if math.isnan(mid):
+        mid = 100
 
 ########################################################################################
 ## Check if colours have been found    
@@ -90,7 +132,14 @@ class Follower:
         
         # Append colour to mask array
         combinedMasks = cv2.add(combinedMasks, maskGreen)
-    
+        
+        self.control(cv2.moments(combinedMasks), hsv)
+        
+        if mid <=1 and cv2.moments(maskGreen)['m00'] > 0:
+            self.pillarFound('green', self.greenFound)
+            self.greenFound = True
+            self.completeMessage()
+        
     ## if Blue is false, append to mask for view
     if self.blueFound == False:
         
@@ -103,6 +152,13 @@ class Follower:
         
         # Append colour to mask array
         combinedMasks = cv2.add(combinedMasks, maskBlue)
+        
+        self.control(cv2.moments(combinedMasks), hsv)
+        
+        if mid <=1 and cv2.moments(maskBlue)['m00'] > 0:
+            self.pillarFound('blue', self.blueFound)
+            self.blueFound = True
+            self.completeMessage()
     
     ## if Yellow is false, append to mask for view
     if self.yellowFound == False:
@@ -116,6 +172,13 @@ class Follower:
         
         # Append colour to mask array
         combinedMasks = cv2.add(combinedMasks, maskYellow)
+        
+        self.control(cv2.moments(combinedMasks), hsv)
+        
+        if mid <=1 and cv2.moments(maskYellow)['m00'] > 0:
+            self.pillarFound('yellow', self.yellowFound)
+            self.yellowFound = True
+            self.completeMessage()
 
     ## if Red is false, append to mask for view
     if self.redFound == False:
@@ -130,52 +193,100 @@ class Follower:
         # Append colour to mask array
         combinedMasks = cv2.add(combinedMasks, maskRed)
         
+        self.control(cv2.moments(combinedMasks), hsv)
+        
+        if mid <=1 and cv2.moments(maskRed)['m00'] > 0:
+            self.pillarFound('red', self.redFound)
+            self.redFound = True
+            self.completeMessage()
+        
     # END CONTROL
     cv2.imshow("HSV Image", hsv)
     cv2.imshow("Combined Masks", combinedMasks)
     cv2.waitKey(1)
-        
-########################################################################################
-        
-## Print message if NO coloured monuments found
-    ## Not syntactically correct (everything needs to equal False)
-   # if self.greenFound and self.blueFound and self.yellowFound and self.redFound == False:
-    #    print "No monuments found."
-        
-## Print message if ALL coloured monuments found
-    if self.greenFound == True and self.blueFound == True and self.yellowFound == True and self.redFound == True:
-        print "All monuments found. End of session."  
 
 ########################################################################################
 
-    h, w, d = image.shape
-    
-## Trying to see colours on screen 
-    M = cv2.moments(combinedMasks)
-## Use distance metric as a measure of depth using lasers
-    self.distance = self.laser.ranges
-        
-    if M['m00'] > 0:
-      if min(self.distance) > 0.5 or math.isnan(min(self.distance)):  
-          
-        ## Centre 'x' pixel 
-          cx = int(M['m10']/M['m00'])
-        ## Centre 'y' pixel
-          cy = int(M['m01']/M['m00'])
-        ## Draw cirlce on image
-          cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
-          
-        ## BEGIN CONTROL
-          err = cx - w/2
-          self.twist.linear.x = 0.6
-          self.twist.angular.z = -float(err) / 100
-          self.cmd_vel_pub.publish(self.twist)
+#    h, w, d = image.shape
+#    
+### Trying to see colours on screen 
+#    M = cv2.moments(combinedMasks)
+### Use distance metric as a measure of depth using lasers
+##    self.distance = self.laser.ranges
+#        
+#    if M['m00'] > 0:
+#      if min(self.distance) > 0.5 or math.isnan(min(self.distance)):  
+#          
+#        ## Centre 'x' pixel 
+#          cx = int(M['m10']/M['m00'])
+#          
+#        ## BEGIN CONTROL
+#          err = cx - w/2
+#          self.twist.linear.x = 0.6
+#          self.twist.angular.z = -float(err) / 100
+#          self.cmd_vel_pub.publish(self.twist)
           
           #Check what colour is in front of the robot
-          feedback = self.whatColour(hsv, cx, cy)
-          print feedback
+          #feedback = self.pillarFound()
+          #print feedback
     
-    # Class selector used to run class
+##########################################################################################
+    
+#    middle = (len(self.distance) - 1) / 2
+#    mid = self.distance[middle]
+#    
+#    if math.isnan(mid):
+#        mid = 100
+#    
+#    # If Green has been found
+#    if self.greenFound == False:
+#        
+#        greenMask = self.setMask(hsv, numpy.array(lowerBoundColours[0]), numpy.array(upperBoundColours[0]))
+#        
+#        combinedMasks = cv2.add(combinedMasks, greenMask)
+#        
+#        if mid <=1 and cv2.moments(greenMask)['m00'] > 0:
+#            self.pillarFound('green', self.greenFound)
+#            self.greenFound = True
+#            self.completeMessage()
+#
+#    # If Blue has been found
+#    if self.blueFound == False:
+#        
+#        blueMask = self.setMask(hsv, numpy.array(lowerBoundColours[1]), numpy.array(upperBoundColours[1]))
+#        
+#        combinedMasks = cv2.add(combinedMasks, blueMask)
+#
+#        if mid <=1 and cv2.moments(blueMask)['m00'] > 0:
+#            self.pillarFound('blue', self.blueFound)
+#            self.blueFound = True
+#            self.completeMessage()
+#
+#    # If Yellow has been found     
+#    if self.yellowFound == False:
+#        
+#        yellowMask = self.setMask(hsv, numpy.array(lowerBoundColours[2]), numpy.array(upperBoundColours[2]))
+#        
+#        combinedMasks = cv2.add(combinedMasks, yellowMask)
+#        
+#        if mid <=1 and cv2.moments(yellowMask)['m00'] > 0:
+#            self.pillarFound('yellow', self.yellowFound)
+#            self.yellowFound = True
+#            self.completeMessage()
+#
+#    # If Red has been found
+#    if self.redFound == False:
+#        
+#        redMask = self.setMask(hsv, numpy.array(lowerBoundColours[3]), numpy.array(upperBoundColours[3]))
+#        
+#        combinedMasks = cv2.add(combinedMasks, redMask)
+#        
+#        if mid <=1 and cv2.moments(redMask)['m00'] > 0:
+#            self.pillarFound('red', self.redFound)
+#            self.redFound = True
+#            self.completeMessage()
+    
+## Class selector used to run class
 if __name__ == "__main__":
     W=Follower()
     rospy.spin()    
