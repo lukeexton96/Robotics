@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import rospy, cv2, cv_bridge, numpy
+import rospy, cv2, cv_bridge, numpy, math
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Float32
@@ -19,14 +19,16 @@ class Follower:
     self.yellowFound = False
     self.redFound = False
     
+    self.laser = LaserScan()
+    self.distance = [0]    
+    
 ## For SIMULATION 
-    self.image_sub = rospy.Subscriber('/turtlebot/camera/rgb/image_raw', Image, self.image_callback)
     self.infrared_camera = rospy.Subscriber('/turtlebot/scan', LaserScan, self.laserRange)    
+    self.image_sub = rospy.Subscriber('/turtlebot/camera/rgb/image_raw', Image, self.image_callback)
     self.cmd_vel_pub = rospy.Publisher('/turtlebot/cmd_vel', Twist, queue_size=1)
 
     self.twist = Twist()
     self.laser.ranges = []
-    self.laser = LaserScan()
     
 
   def laserRange(self, data):
@@ -35,33 +37,38 @@ class Follower:
   def whatColour(self, image, cx, cy):
       # get Hue Value
       hueVal = image[cx, cy, 0]
-      # Red
-      if 0 < hueVal <= 5:
-          self.redFound = True
-          print 'Red Found!'
       # Green 
-      elif 50 < hueVal <= 60:
+      if 40 <= hueVal <= 60:
           self.greenFound = True
-          print 'Green Found!'
+          return 'Green Found!'
       # Blue
-      elif 120 < hueVal <= 140: 
+      elif 100 <= hueVal <= 120: 
           self.blueFound = True
-          print 'Blue Found!'
+          return 'Blue Found!'
       # Yellow
-      elif 30 < hueVal <= 40:
+      elif 25 <= hueVal <= 30:
           self.yellowFound = True
-          print 'Yellow Found!'
+          return 'Yellow Found!'
+      # Red
+      elif 0 <= hueVal <= 4:
+          self.redFound = True
+          return 'Red Found!'
+      else:
+          return 'No colour on spectrum found'
   
   def image_callback(self, msg):
+    
     image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
     ## Arrays to hold values 
-    upperBoundColours = [[50,  100, 100], [120, 100, 100], [30, 100, 100], [0, 100, 100]]
-    lowerBoundColours = [[60, 255, 255], [140, 255, 250], [40, 255, 255], [5, 255, 255]]
+    lowerBoundColours = [[40, 200, 100], [100, 200, 100], [25, 200, 100], [0, 210, 100]]
+    upperBoundColours = [[60, 255, 255], [120, 255, 255], [30, 255, 255], [4, 255, 255]]
     
     # initialise combined mask cv2 object
-    combinedMasks = cv2.inRange(hsv, numpy.array([180, 255, 255]),numpy.array([180, 255, 255]))
+    combinedMasks = cv2.inRange(hsv, numpy.array([180, 255, 255]), numpy.array([180, 255, 255]))
+    self.distance = [0]    
+    
     
     #   Upper and Lower bounds defined as
 #   [0] = Green
@@ -75,8 +82,8 @@ class Follower:
     if self.greenFound == False:
         
         # Set bounds for colour
-        lower_green = numpy.array(upperBoundColours[0])
-        upper_green = numpy.array(lowerBoundColours[0])
+        lower_green = numpy.array(lowerBoundColours[0])
+        upper_green = numpy.array(upperBoundColours[0])
         
         # set to colour specific mask
         maskGreen = cv2.inRange(hsv, lower_green, upper_green)
@@ -88,8 +95,8 @@ class Follower:
     if self.blueFound == False:
         
         # Set bounds for colour
-        lower_blue = numpy.array(upperBoundColours[1])
-        upper_blue = numpy.array(lowerBoundColours[1])
+        lower_blue = numpy.array(lowerBoundColours[1])
+        upper_blue = numpy.array(upperBoundColours[1])
         
         # set to colour specific mask
         maskBlue = cv2.inRange(hsv, lower_blue, upper_blue)    
@@ -101,8 +108,8 @@ class Follower:
     if self.yellowFound == False:
         
         # Set bounds for colour
-        lower_yellow = numpy.array(upperBoundColours[2])
-        upper_yellow = numpy.array(lowerBoundColours[2])
+        lower_yellow = numpy.array(lowerBoundColours[2])
+        upper_yellow = numpy.array(upperBoundColours[2])
         
         # set to colour specific mask
         maskYellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
@@ -114,8 +121,8 @@ class Follower:
     if self.redFound == False:
             
         # Set bounds for colour        
-        lower_red = numpy.array(upperBoundColours[3])
-        upper_red = numpy.array(lowerBoundColours[3])
+        lower_red = numpy.array(lowerBoundColours[3])
+        upper_red = numpy.array(upperBoundColours[3])
         
         # set to colour specific mask
         maskRed = cv2.inRange(hsv, lower_red, upper_red)
@@ -123,16 +130,20 @@ class Follower:
         # Append colour to mask array
         combinedMasks = cv2.add(combinedMasks, maskRed)
         
+    # END CONTROL
+    cv2.imshow("HSV Image", hsv)
+    cv2.imshow("Combined Masks", combinedMasks)
+    cv2.waitKey(1)
+        
 ########################################################################################
         
 ## Print message if NO coloured monuments found
     ## Not syntactically correct (everything needs to equal False)
-    if self.greenFound and self.blueFound and self.yellowFound and self.redFound == False:
-        print "No monuments found."
+   # if self.greenFound and self.blueFound and self.yellowFound and self.redFound == False:
+    #    print "No monuments found."
         
 ## Print message if ALL coloured monuments found
-    ## Not syntactically correct (everything needs to equal True)
-    if self.greenFound and self.blueFound and self.yellowFound and self.redFound == True:
+    if self.greenFound == True and self.blueFound == True and self.yellowFound == True and self.redFound == True:
         print "All monuments found. End of session."  
 
 ########################################################################################
@@ -142,10 +153,10 @@ class Follower:
 ## Trying to see colours on screen 
     M = cv2.moments(combinedMasks)
 ## Use distance metric as a measure of depth using lasers
-    Distance = self.laser.ranges
+    self.distance = self.laser.ranges
         
     if M['m00'] > 0:
-      if min(Distance) > 0.8 or math.isnan(min(Distance)):  
+      if min(self.distance) > 0.5 or math.isnan(min(self.distance)):  
           
         ## Centre 'x' pixel 
           cx = int(M['m10']/M['m00'])
@@ -161,12 +172,8 @@ class Follower:
           self.cmd_vel_pub.publish(self.twist)
           
           #Check what colour is in front of the robot
-          self.whatColour(hsv, cx, cy)
-          
-# END CONTROL
-    cv2.imshow("window", image)
-    cv2.imshow("window", combinedMasks)
-    cv2.waitKey(1)   
+          feedback = self.whatColour(hsv, cx, cy)
+          print feedback
     
     # Class selector used to run class
 if __name__ == "__main__":
