@@ -3,14 +3,14 @@ import rospy, cv2, cv_bridge, numpy, math
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Float32
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, PoseStamped
+from move_base_msgs.msg import MoveBaseActionResult
  
 wheel_radius = 0.05
 robot_radius = 0.25
 
 class Follower:
   def __init__(self):
-    rospy.init_node('follower')
     self.bridge = cv_bridge.CvBridge()
     cv2.namedWindow("window", 1)
         
@@ -22,16 +22,66 @@ class Follower:
     self.laser = LaserScan()
     self.distance = [0]    
     
+    # Goals
+    self.atPoint = False
+    self.goalPositions = [[2.01, -4.04],
+                          [0.996, -1.05], 
+                          [-2.24, -1.57], 
+                          [-3.95, -1.04], 
+                          [-3.56, 2.93], 
+                          [-3.97, -1.57], 
+                          [-0.476, 0.804],
+                          [-0.298, 3.93]]
+    
+    
 ## For SIMULATION 
     self.infrared_camera = rospy.Subscriber('/turtlebot/scan', LaserScan, self.laserRange)    
+    rospy.sleep(2)
     self.image_sub = rospy.Subscriber('/turtlebot/camera/rgb/image_raw', Image, self.image_callback)
     self.cmd_vel_pub = rospy.Publisher('/turtlebot/cmd_vel', Twist, queue_size=1)
+    
+    # For Move_Base to set goals/waypoints throughout map
+    self.setGoal = rospy.Publisher('/turtlebot/move_base_simple/goal', PoseStamped, queue_size=1)
+    self.confirmGoal = rospy.Subscriber('/turtlebot/move_base/result', MoveBaseActionResult, self.goalCallback)
 
     self.twist = Twist()
-    self.laser.ranges = []
+    rospy.sleep(3)
 
   def laserRange(self, data):
       self.laser = data
+     
+#####################################################################################     
+     
+  def setWaypoint(self, x, y):
+      pos = PoseStamped()
+      
+      pos.header.frame_id = '/map'
+      # Set orientation of robot if needed
+      pos.pose.orientation.w = 1
+
+      # Position of robot 
+      pos.pose.position.x = x
+      pos.pose.position.y = y
+      pos.pose.position.z = 0
+      
+      self.setGoal.publish(pos)
+      
+#####################################################################################      
+      
+  def goalCallback(self, data):
+      # Return True once it arrives at goal
+      print "At goal!" 
+      self.atPoint = True
+      
+#####################################################################################
+      
+  def setGoalPositions(self, data):
+      # loop through whole array and apply function
+      index = 0
+  
+      self.setWaypoint(self.goalPositionOne[index], W.goalPositionOne[index])
+       
+      return data
       
 #####################################################################################
   
@@ -73,24 +123,26 @@ class Follower:
       
       h, w, d = image.shape
       
-      if M['m00'] > 0:
-          if min(self.distance) > 0.5 or math.isnan(min(self.distance)):  
+      if self.atPoint == True:
+          if M['m00'] > 0:
+              if min(self.distance) > 0.5 or math.isnan(min(self.distance)):  
+                  
+                ## Centre 'x' pixel 
+                  cx = int(M['m10']/M['m00'])
+                  
+                ## BEGIN CONTROL
+                  err = cx - w / 2
+                  self.twist.linear.x = 0.6
+                  self.twist.angular.z = -float(err) / 100
+                  self.cmd_vel_pub.publish(self.twist)
+                  #self.atPoint = False
               
-            ## Centre 'x' pixel 
-              cx = int(M['m10']/M['m00'])
-              
-            ## BEGIN CONTROL
-              err = cx - w / 2
-              self.twist.linear.x = 0.6
-              self.twist.angular.z = -float(err) / 100
-              self.cmd_vel_pub.publish(self.twist)
-          
 #######################################################################################  
   def image_callback(self, msg):
      ## error handling
     try:
         image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-    except CvBridgeError, e:
+    except self.bridge, e:
         print e
         
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -205,9 +257,21 @@ class Follower:
     cv2.imshow("Combined Masks", combinedMasks)
     cv2.waitKey(1)
     
-## Class selector used to run class
+## Main function
 if __name__ == "__main__":
-    W=Follower()
-    rospy.spin()    
+    rospy.init_node('Colour_Checker', anonymous = False)
+    W = Follower()
+
+    ## Here is where you tell it to do shit 
+    ## Use while loops
+    W.setGoalPositions(W.goalPositions)
+    
+    
+    # While blah
+   # while():
+        #do something
+    
+    # Keep client running
+    rospy.spin() 
     
     
