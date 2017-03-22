@@ -13,13 +13,11 @@ class Follower:
     rospy.init_node('follower')
     self.bridge = cv_bridge.CvBridge()
     cv2.namedWindow("window", 1)
-    
-    colours = {'Green': False, 'Blue': False, 'Yellow': False, 'Red': False}
-    
-    greenFound = False
-    blueFound = False
-    yellowFound = False
-    redFound = False
+        
+    self.greenFound = False
+    self.blueFound = False
+    self.yellowFound = False
+    self.redFound = False
     
 ## For SIMULATION 
     self.image_sub = rospy.Subscriber('/turtlebot/camera/rgb/image_raw', Image, self.image_callback)
@@ -30,16 +28,7 @@ class Follower:
     self.laser.ranges = []
     self.laser = LaserScan()
     
-    self.upperBoundColours = [[50,  100,  100], [120,  100,  100], [30,  100,  100], [0,  100,  100]]
-    self.lowerBoundColours = [[180, 255, 255], [140, 255, 250], [255, 255, 255], [5, 255, 255]]
-    self.masks = []
-   
-#   Upper and Lower bounds defined as
-#   [0] = Green
-#   [1] = Blue
-#   [2] = Yellow
-#   [3] = Red
-    
+
   def laserRange(self, data):
       self.laser = data
     
@@ -47,73 +36,89 @@ class Follower:
     image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
+    upperBoundColours = [[50,  100, 100], [120, 100, 100], [30, 100, 100], [0, 100, 100]]
+    lowerBoundColours = [[180, 255, 255], [140, 255, 250], [255, 255, 255], [5, 255, 255]]
+    combinedMasks = cv2.inRange(hsv, numpy.array([180, 255, 255]),numpy.array([180, 255, 255]))
+    
+    #   Upper and Lower bounds defined as
+#   [0] = Green
+#   [1] = Blue
+#   [2] = Yellow
+#   [3] = Red
+    
 
+########################################################################################
 ## Check if colours have been found    
     ## If Green is false, append to mask for view
-    if greenFound == False:
-        lower_green = numpy.array(self.upperBoundColours[0])
-        upper_green = numpy.array(self.lowerBoundColours[0])
+    if self.greenFound == False:
         
+        # Set bounds for colour
+        lower_green = numpy.array(upperBoundColours[0])
+        upper_green = numpy.array(lowerBoundColours[0])
+        
+        # set to colour specific mask
         maskGreen = cv2.inRange(hsv, lower_green, upper_green)
+        
+        # Append colour to mask array
+        combinedMasks = cv2.add(combinedMasks, maskGreen)
     
     ## if Blue is false, append to mask for view
-    if blueFound == False:
+    if self.blueFound == False:
         
-        lower_blue = numpy.array(self.upperBoundColours[1])
-        upper_blue = numpy.array(self.lowerBoundColours[1])
+        # Set bounds for colour
+        lower_blue = numpy.array(upperBoundColours[1])
+        upper_blue = numpy.array(lowerBoundColours[1])
         
+        # set to colour specific mask
         maskBlue = cv2.inRange(hsv, lower_blue, upper_blue)    
+        
+        # Append colour to mask array
+        combinedMasks = cv2.add(combinedMasks, maskBlue)
     
     ## if Yellow is false, append to mask for view
-    if yellowFound == False:
+    if self.yellowFound == False:
         
-        lower_yellow = numpy.array(self.upperBoundColours[2])
-        upper_yellow = numpy.array(self.lowerBoundColours[2])
+        # Set bounds for colour
+        lower_yellow = numpy.array(upperBoundColours[2])
+        upper_yellow = numpy.array(lowerBoundColours[2])
         
+        # set to colour specific mask
         maskYellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
+        
+        # Append colour to mask array
+        combinedMasks = cv2.add(combinedMasks, maskYellow)
 
     ## if Red is false, append to mask for view
-    if redFound == False:
+    if self.redFound == False:
             
-        lower_red = numpy.array(self.upperBoundColours[3])
-        upper_red = numpy.array(self.lowerBoundColours[3])
+        # Set bounds for colour        
+        lower_red = numpy.array(upperBoundColours[3])
+        upper_red = numpy.array(lowerBoundColours[3])
         
+        # set to colour specific mask
         maskRed = cv2.inRange(hsv, lower_red, upper_red)
         
+        # Append colour to mask array
+        combinedMasks = cv2.add(combinedMasks, maskRed)
+        
+########################################################################################
+        
     ## Print message if NO coloured monuments found
-    if greenFound and blueFound and yellowFound and redFound == False:
+    ## Not syntactically correct (everything needs to equal False
+    if self.greenFound and self.blueFound and self.yellowFound and self.redFound == False:
         print "No monuments found."
         
     ## Print message if ALL coloured monuments found
-    if greenFound and blueFound and yellowFound and redFound == True:
+    ## Not syntactically correct (everything needs to equal True
+    if self.greenFound and self.blueFound and self.yellowFound and self.redFound == True:
         print "All monuments found. End of session."  
 
-    
-## Define colour 'Blue' Identifiers
-    lower_blue = numpy.array([ 120,  100,  100])
-    upper_blue = numpy.array([140, 255, 250])
-    maskBlue = cv2.inRange(hsv, lower_blue, upper_blue) 
-    
-## Define colour 'Yellow' Identifiers
-    lower_yellow = numpy.array([ 30,  100,  100])
-    upper_yellow = numpy.array([255, 255, 255])
-    maskYellow = cv2.inRange(hsv, lower_yellow, upper_yellow) 
-
-## Define colour 'red' Identifiers
-    lower_red = numpy.array([ 0,  100,  100])
-    upper_red = numpy.array([5, 255, 255])
-    maskRed = cv2.inRange(hsv, lower_red, upper_red) 
+########################################################################################
 
 ## Set mask to contain only the colours defined above
-    masks = maskGreen + maskBlue + maskYellow + maskRed
-    
+    masks = combinedMasks
+            
     h, w, d = image.shape
-    
-## Cut light
-    search_top = 3*h/4 - 175
-    search_bottom = 3*h/4 + 50
-    masks[0:search_top, 0:w] = 0
-    masks[search_bottom:h, 0:w] = 0
     
 ## Trying to see colours on screen 
     M = cv2.moments(masks)
