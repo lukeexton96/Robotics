@@ -31,13 +31,36 @@ class Follower:
 
   def laserRange(self, data):
       self.laser = data
-    
+  
+  def whatColour(self, image, cx, cy):
+      # get Hue Value
+      hueVal = image[cx, cy, 0]
+      # Red
+      if 0 < hueVal <= 5:
+          self.redFound = True
+          print 'Red Found!'
+      # Green 
+      elif 50 < hueVal <= 60:
+          self.greenFound = True
+          print 'Green Found!'
+      # Blue
+      elif 120 < hueVal <= 140: 
+          self.blueFound = True
+          print 'Blue Found!'
+      # Yellow
+      elif 30 < hueVal <= 40:
+          self.yellowFound = True
+          print 'Yellow Found!'
+  
   def image_callback(self, msg):
     image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
+    
+    ## Arrays to hold values 
     upperBoundColours = [[50,  100, 100], [120, 100, 100], [30, 100, 100], [0, 100, 100]]
-    lowerBoundColours = [[180, 255, 255], [140, 255, 250], [255, 255, 255], [5, 255, 255]]
+    lowerBoundColours = [[60, 255, 255], [140, 255, 250], [40, 255, 255], [5, 255, 255]]
+    
+    # initialise combined mask cv2 object
     combinedMasks = cv2.inRange(hsv, numpy.array([180, 255, 255]),numpy.array([180, 255, 255]))
     
     #   Upper and Lower bounds defined as
@@ -45,7 +68,6 @@ class Follower:
 #   [1] = Blue
 #   [2] = Yellow
 #   [3] = Red
-    
 
 ########################################################################################
 ## Check if colours have been found    
@@ -103,32 +125,27 @@ class Follower:
         
 ########################################################################################
         
-    ## Print message if NO coloured monuments found
-    ## Not syntactically correct (everything needs to equal False
+## Print message if NO coloured monuments found
+    ## Not syntactically correct (everything needs to equal False)
     if self.greenFound and self.blueFound and self.yellowFound and self.redFound == False:
         print "No monuments found."
         
-    ## Print message if ALL coloured monuments found
-    ## Not syntactically correct (everything needs to equal True
+## Print message if ALL coloured monuments found
+    ## Not syntactically correct (everything needs to equal True)
     if self.greenFound and self.blueFound and self.yellowFound and self.redFound == True:
         print "All monuments found. End of session."  
 
 ########################################################################################
 
-## Set mask to contain only the colours defined above
-    masks = combinedMasks
-            
     h, w, d = image.shape
     
 ## Trying to see colours on screen 
-    M = cv2.moments(masks)
-
+    M = cv2.moments(combinedMasks)
+## Use distance metric as a measure of depth using lasers
     Distance = self.laser.ranges
-    
-## Check colour and check if false or true
-    
+        
     if M['m00'] > 0:
-      if min(Distance) > 1 or math.isnan(min(Distance)):  
+      if min(Distance) > 0.8 or math.isnan(min(Distance)):  
           
         ## Centre 'x' pixel 
           cx = int(M['m10']/M['m00'])
@@ -142,11 +159,13 @@ class Follower:
           self.twist.linear.x = 0.6
           self.twist.angular.z = -float(err) / 100
           self.cmd_vel_pub.publish(self.twist)
-      #    self.whatColour()
+          
+          #Check what colour is in front of the robot
+          self.whatColour(hsv, cx, cy)
           
 # END CONTROL
     cv2.imshow("window", image)
-    cv2.imshow("window", masks)
+    cv2.imshow("window", combinedMasks)
     cv2.waitKey(1)   
     
     # Class selector used to run class
