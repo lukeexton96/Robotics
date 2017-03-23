@@ -77,12 +77,9 @@ class Follower:
       
   def setGoalPositions(self, data):
       # loop through whole array and apply function
-      index = 0
-  
-      self.setWaypoint(self.goalPositionOne[index], W.goalPositionOne[index])
-       
-      return data
-      
+      for i in self.goalPositions:
+          self.setWaypoint(i[0], i[1])
+          
 #####################################################################################
   
   def pillarFound(self, colour, infoFlag):
