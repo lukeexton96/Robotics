@@ -110,12 +110,6 @@ class Follower:
           self.atPoint = False
       else:
           print 'No colour on spectrum found'
-          
-#####################################################################################
-          
-#  def setMask(self, hsv, lowerBound, upperBound):
-#      mask = cv2.inRange(hsv, lowerBound, upperBound)    
-#      return mask
 
 ######################################################################################  
 
@@ -269,10 +263,7 @@ class Follower:
     
   def searchMap(self):
       #do stuff
-      if self.inSearchMode == True:
-          if(abs(self.elapsedScanTime - time.time()) > 10):
-              self.inSearchMode = False
-              self.foundObject = True
+      if self.inSearchMode == True and not follower.goalSeeking:
               
           #searching logic
           a = Twist()
