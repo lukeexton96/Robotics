@@ -23,6 +23,7 @@ class Follower:
     self.distance = [0]    
     self.objectFound = False
     self.goalSeeking = True
+    self.inSearchMode = False
     
     # Goals
     self.atPoint = False
@@ -39,14 +40,6 @@ class Follower:
     self.lowerBoundColours = [[40, 200, 100], [100, 200, 100], [25, 200, 100], [0, 210, 100]]
     self.upperBoundColours = [[60, 255, 255], [120, 255, 255], [30, 255, 255], [4, 255, 255]]
     
-#    self.positionOne = [2.01, -4.04]
-#    self.positionTwo = [0.996, -1.05]
-#    self.positionThree = [-2.24, -1.57]
-#    self.positionFour = [-3.95, -1.04]
-#    self.positionFive = [-3.56, 2.93]
-#    self.positionSix = [-3.97, -1.57]
-#    self.positionSeven = [-0.476, 0.804]
-#    self.positionEight = [-0.298, 3.93]
     
  ## For SIMULATION  
     self.infrared_camera = rospy.Subscriber('/turtlebot/scan', LaserScan, self.laserRange)    
@@ -59,6 +52,8 @@ class Follower:
     self.confirmGoal = rospy.Subscriber('/turtlebot/move_base/result', MoveBaseActionResult, self.goalCallback)
 
     self.twist = Twist()
+    
+    # Sleep for 3 seconds 
     rospy.sleep(3)
 
   def laserRange(self, data):
@@ -87,22 +82,6 @@ class Follower:
       print "At goal!" 
       self.atPoint = True
       self.goalSeeking = False
-      
-#####################################################################################
-      
-#  def setGoalPositions(self, data):
-#      # Need to include logic here somewhere so waypoints aren't overwritten
-#      # Effective use and integration of flags 
-#      
-#      # Set object found to False as establishing new path 
-#      self.objectFound = False
-#      self.goalSeeking = True
-#      
-#      # loop through whole array and apply function
-#      for i in data:
-#          self.setWaypoint(i[0], i[1])
-#          self.counter = i
-#          print i
           
 #####################################################################################
   
@@ -139,8 +118,10 @@ class Follower:
 ######################################################################################  
 
   def completeMessage(self):
+      self.inSearchMode = False
+      self.objectFound = True
       if self.greenFound == True and self.blueFound == True and self.yellowFound == True and self.redFound == True:
-          print "All monuments found. End of session."
+          print "All monuments found."
 
 ######################################################################################
   
@@ -149,13 +130,10 @@ class Follower:
       h, w, d = image.shape
       
       if self.atPoint == True:
-          # Scan for colour          
-          
           # If colour isn't found, publish next waypoint  
           
           if M['m00'] > 0:
               # Set object Found to True as object has been found          
-              self.objectFound = True
               if min(self.distance) > 0.5 or math.isnan(min(self.distance)):  
                   
                 ## Centre 'x' pixel 
@@ -166,6 +144,9 @@ class Follower:
                   self.twist.linear.x = 0.6
                   self.twist.angular.z = -float(err) / 100
                   self.cmd_vel_pub.publish(self.twist)
+          else:
+                self.searchMap()
+                  
                   
               
 #######################################################################################  
@@ -187,6 +168,7 @@ class Follower:
     
     self.distance = self.laser.ranges
     
+    # Get middle pixel for colour testing
     middle = (len(self.distance) - 1) / 2
     mid = self.distance[middle]
     
@@ -274,14 +256,25 @@ class Follower:
             self.pillarFound('red', self.redFound)
             self.redFound = True
             self.completeMessage()
-        
+    
     # END CONTROL
+    self.control(cv2.moments(combinedMasks), hsv)
     cv2.imshow("HSV Image", hsv)
     cv2.imshow("Combined Masks", combinedMasks)
     cv2.waitKey(1)
     
 ####################################################################################
     
+  def searchMap(self):
+      #do stuff
+      if self.inSearchMode == True:
+          #searching logic
+          a = Twist()
+          a.angular.z = 0.5
+          self.cmd_vel_pub.publish(a)
+    
+####################################################################################
+
 if __name__ == "__main__":
     try:
         rospy.init_node('Colour_Checker', anonymous = False)
@@ -293,10 +286,15 @@ if __name__ == "__main__":
             count + 1
             
             follower.setWaypoint(i[0], i[1])
+            follower.foundObject = False
             follower.goalSeeking = True
             while follower.goalSeeking == True:
                 # Call function to begin search and stuff
-                follower.image_callback()
+                if follower.atPoint == True:
+                    follower.inSearchMode = True
+                if follower.foundObject == True:
+                    follower.goalSeeking = False
+                    
         
         print "Journey is now complete"
         
@@ -307,25 +305,3 @@ if __name__ == "__main__":
         
     except rospy.ROSInterruptException:
         rospy.loginfo("CTRL + C Caught, QUITTING")
-        
-####################################################################################    
-#        while(True):    
-#            # 1) Am I moving towards the goal? False - set goal, True - step 2
-#            if W.goalSeeking == False:
-#                # Arugments yet to be entered
-#                W.setWaypoint()
-#            if W.goalSeeking == True:
-#                # 2) Am I at the goal? False - rospy.sleep(1), - goal count, checking atPoint, True - Step 3, Scan
-#                if W.atPoint == False: 
-#                    # Sleep and wait till it's at point
-#                    rospy.sleep(1)
-#                if W.atPoint == True:
-#                   # W.control(cv2.moments(combinedMasks), hsv)
-#                    # 3) Have I found an object? False - set next goal, 
-#                    #    True - move towards it, register objects and remove from mask 
-#                    if W.objectFound == False:
-#                        #do something
-#                        W.setWaypoint()
-#                    if W.objectFound == True: 
-#                        # set next way point
-#                        W.setWaypoint()
