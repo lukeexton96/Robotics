@@ -5,7 +5,8 @@ from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist, PoseStamped
 from move_base_msgs.msg import MoveBaseActionResult
- 
+import time
+
 wheel_radius = 0.05
 robot_radius = 0.25
 
@@ -24,6 +25,7 @@ class Follower:
     self.objectFound = False
     self.goalSeeking = True
     self.inSearchMode = False
+    self.elapsedScanTime = time.time()
     
     # Goals
     self.atPoint = False
@@ -268,6 +270,10 @@ class Follower:
   def searchMap(self):
       #do stuff
       if self.inSearchMode == True:
+          if(abs(self.elapsedScanTime - time.time()) > 10):
+              self.inSearchMode = False
+              self.foundObject = True
+              
           #searching logic
           a = Twist()
           a.angular.z = 0.5
@@ -292,6 +298,7 @@ if __name__ == "__main__":
                 # Call function to begin search and stuff
                 if follower.atPoint == True:
                     follower.inSearchMode = True
+                    follower.elapsedScanTime = time.time()
                 if follower.foundObject == True:
                     follower.goalSeeking = False
                     
