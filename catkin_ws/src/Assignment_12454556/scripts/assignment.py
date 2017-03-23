@@ -21,7 +21,6 @@ class Follower:
     
     self.laser = LaserScan()
     self.distance = [0]    
-    self.counter = 0
     self.objectFound = False
     self.goalSeeking = True
     
@@ -36,7 +35,9 @@ class Follower:
                           [-0.476, 0.804],
                           [-0.298, 3.93]]
                     
-    
+    ## Arrays to hold values 
+    self.lowerBoundColours = [[40, 200, 100], [100, 200, 100], [25, 200, 100], [0, 210, 100]]
+    self.upperBoundColours = [[60, 255, 255], [120, 255, 255], [30, 255, 255], [4, 255, 255]]
     
 #    self.positionOne = [2.01, -4.04]
 #    self.positionTwo = [0.996, -1.05]
@@ -150,13 +151,11 @@ class Follower:
       if self.atPoint == True:
           # Scan for colour          
           
-          # If colour isn't found, publish next waypoint
-          
-          # If colour is found, head over and mark
-          # Set object Found to True as object has been found          
-          self.objectFound = True
+          # If colour isn't found, publish next waypoint  
           
           if M['m00'] > 0:
+              # Set object Found to True as object has been found          
+              self.objectFound = True
               if min(self.distance) > 0.5 or math.isnan(min(self.distance)):  
                   
                 ## Centre 'x' pixel 
@@ -178,10 +177,6 @@ class Follower:
         print e
         
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)    
- 
-    ## Arrays to hold values 
-    lowerBoundColours = [[40, 200, 100], [100, 200, 100], [25, 200, 100], [0, 210, 100]]
-    upperBoundColours = [[60, 255, 255], [120, 255, 255], [30, 255, 255], [4, 255, 255]]
     
     # initialise combined mask cv2 object
     combinedMasks = cv2.inRange(hsv, numpy.array([180, 255, 255]), numpy.array([180, 255, 255]))
@@ -204,8 +199,8 @@ class Follower:
     if self.greenFound == False:
         
         # Set bounds for colour
-        lower_green = numpy.array(lowerBoundColours[0])
-        upper_green = numpy.array(upperBoundColours[0])
+        lower_green = numpy.array(self.lowerBoundColours[0])
+        upper_green = numpy.array(self.upperBoundColours[0])
         
         # set to colour specific mask
         maskGreen = cv2.inRange(hsv, lower_green, upper_green)
@@ -224,8 +219,8 @@ class Follower:
     if self.blueFound == False:
         
         # Set bounds for colour
-        lower_blue = numpy.array(lowerBoundColours[1])
-        upper_blue = numpy.array(upperBoundColours[1])
+        lower_blue = numpy.array(self.lowerBoundColours[1])
+        upper_blue = numpy.array(self.upperBoundColours[1])
         
         # set to colour specific mask
         maskBlue = cv2.inRange(hsv, lower_blue, upper_blue)    
@@ -244,8 +239,8 @@ class Follower:
     if self.yellowFound == False:
         
         # Set bounds for colour
-        lower_yellow = numpy.array(lowerBoundColours[2])
-        upper_yellow = numpy.array(upperBoundColours[2])
+        lower_yellow = numpy.array(self.lowerBoundColours[2])
+        upper_yellow = numpy.array(self.upperBoundColours[2])
         
         # set to colour specific mask
         maskYellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
@@ -264,8 +259,8 @@ class Follower:
     if self.redFound == False:
             
         # Set bounds for colour        
-        lower_red = numpy.array(lowerBoundColours[3])
-        upper_red = numpy.array(upperBoundColours[3])
+        lower_red = numpy.array(self.lowerBoundColours[3])
+        upper_red = numpy.array(self.upperBoundColours[3])
         
         # set to colour specific mask
         maskRed = cv2.inRange(hsv, lower_red, upper_red)

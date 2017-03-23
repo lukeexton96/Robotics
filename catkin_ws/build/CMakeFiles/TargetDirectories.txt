@@ -1,0 +1,13 @@
+/home/computing/catkin_ws/build/CMakeFiles/clean_test_results.dir
+/home/computing/catkin_ws/build/CMakeFiles/download_extra_data.dir
+/home/computing/catkin_ws/build/CMakeFiles/doxygen.dir
+/home/computing/catkin_ws/build/commanding_velocity/CMakeFiles/geometry_msgs_generate_messages_cpp.dir
+/home/computing/catkin_ws/build/commanding_velocity/CMakeFiles/geometry_msgs_generate_messages_lisp.dir
+/home/computing/catkin_ws/build/commanding_velocity/CMakeFiles/geometry_msgs_generate_messages_py.dir
+/home/computing/catkin_ws/build/gtest/CMakeFiles/gtest.dir
+/home/computing/catkin_ws/build/gtest/CMakeFiles/gtest_main.dir
+/home/computing/catkin_ws/build/CMakeFiles/run_tests.dir
+/home/computing/catkin_ws/build/commanding_velocity/CMakeFiles/std_msgs_generate_messages_cpp.dir
+/home/computing/catkin_ws/build/commanding_velocity/CMakeFiles/std_msgs_generate_messages_lisp.dir
+/home/computing/catkin_ws/build/commanding_velocity/CMakeFiles/std_msgs_generate_messages_py.dir
+/home/computing/catkin_ws/build/CMakeFiles/tests.dir
