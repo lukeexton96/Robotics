@@ -14,12 +14,14 @@ class Follower:
   def __init__(self):
     self.bridge = cv_bridge.CvBridge()
     cv2.namedWindow("window", 1)
-        
+    
+    # Initialise found variable flags
     self.greenFound = False
     self.blueFound = False
     self.yellowFound = False
     self.redFound = False
     
+    # intial global methods and variables
     self.laser = LaserScan()
     self.distance = [0]    
     self.objectFound = False
@@ -27,7 +29,7 @@ class Follower:
     self.inSearchMode = False
     self.elapsedScanTime = time.time()
     
-    # Goals
+    # Initialise global array which contains co-ordinates for all way-points
     self.atPoint = False
     self.goalPositions = [[2.01, -4.04],
                           [0.996, -1.05], 
@@ -52,7 +54,8 @@ class Follower:
     # For Move_Base to set goals/waypoints throughout map
     self.setGoal = rospy.Publisher('/turtlebot/move_base_simple/goal', PoseStamped, queue_size=1)
     self.confirmGoal = rospy.Subscriber('/turtlebot/move_base/result', MoveBaseActionResult, self.goalCallback)
-
+    
+    # Initialise Twist() method
     self.twist = Twist()
     
     # Sleep for 3 seconds 
@@ -62,7 +65,7 @@ class Follower:
       self.laser = data
      
 #####################################################################################     
-     
+## Method used to set a way-point on the map for the robot to head to
   def setWaypoint(self, x, y):
       pos = PoseStamped()
       
@@ -75,10 +78,11 @@ class Follower:
       pos.pose.position.y = y
       pos.pose.position.z = 0
       
+      # Publish position
       self.setGoal.publish(pos)
       
 #####################################################################################      
-      
+## Method used as a callback function from confirmGoal to confirm robot has met goal
   def goalCallback(self, data):
       # Return True once it arrives at goal
       print "At goal!" 
@@ -86,7 +90,7 @@ class Follower:
       self.goalSeeking = False
           
 #####################################################################################
-  
+## Method fired to check whether Pillar/Monument has been found
   def pillarFound(self, colour, infoFlag):
       # Green 
       if colour == 'green' and infoFlag == False:
@@ -112,7 +116,7 @@ class Follower:
           print 'No colour on spectrum found'
 
 ######################################################################################  
-
+## Method called to send message that all monuments have been found
   def completeMessage(self):
       self.inSearchMode = False
       self.objectFound = True
@@ -120,16 +124,16 @@ class Follower:
           print "All monuments found."
 
 ######################################################################################
-  
+## Control method used to identify and approach monuments should they appear within the mask
   def control(self, M, image):
       
       h, w, d = image.shape
       
+      # If the robot is at the way-point, enter this method
       if self.atPoint == True:
-          # If colour isn't found, publish next waypoint  
-          
+          # If the robot has an object within it's view, enter further
           if M['m00'] > 0:
-              # Set object Found to True as object has been found          
+              # Approach the object until it's distance is 50cm away. 
               if min(self.distance) > 0.5 or math.isnan(min(self.distance)):  
                   
                 ## Centre 'x' pixel 
@@ -140,10 +144,9 @@ class Follower:
                   self.twist.linear.x = 0.6
                   self.twist.angular.z = -float(err) / 100
                   self.cmd_vel_pub.publish(self.twist)
+          # If object not found, continue to search the map
           else:
                 self.searchMap()
-                  
-                  
               
 #######################################################################################  
   def image_callback(self, msg):
@@ -253,8 +256,9 @@ class Follower:
             self.redFound = True
             self.completeMessage()
     
-    # END CONTROL
+    # CONTROL
     self.control(cv2.moments(combinedMasks), hsv)
+    # Show windows of live images
     cv2.imshow("HSV Image", hsv)
     cv2.imshow("Combined Masks", combinedMasks)
     cv2.waitKey(1)
@@ -277,10 +281,13 @@ if __name__ == "__main__":
         rospy.init_node('Colour_Checker', anonymous = False)
         follower = Follower()
         
+        #set count to allow for incremental way-point allocation
         count = 0
+        # for each item within the goal positions array, set way-point
         for i in follower.goalPositions:
-            print "Heading to Waypoint"
             count + 1
+            print "Heading to Waypoint %s" % count
+
             
             follower.setWaypoint(i[0], i[1])
             follower.foundObject = False
