@@ -21,6 +21,9 @@ class Follower:
     
     self.laser = LaserScan()
     self.distance = [0]    
+    self.counter = 0
+    self.objectFound = False
+    self.goalSeeking = True
     
     # Goals
     self.atPoint = False
@@ -32,9 +35,19 @@ class Follower:
                           [-3.97, -1.57], 
                           [-0.476, 0.804],
                           [-0.298, 3.93]]
+                    
     
     
-## For SIMULATION 
+#    self.positionOne = [2.01, -4.04]
+#    self.positionTwo = [0.996, -1.05]
+#    self.positionThree = [-2.24, -1.57]
+#    self.positionFour = [-3.95, -1.04]
+#    self.positionFive = [-3.56, 2.93]
+#    self.positionSix = [-3.97, -1.57]
+#    self.positionSeven = [-0.476, 0.804]
+#    self.positionEight = [-0.298, 3.93]
+    
+ ## For SIMULATION  
     self.infrared_camera = rospy.Subscriber('/turtlebot/scan', LaserScan, self.laserRange)    
     rospy.sleep(2)
     self.image_sub = rospy.Subscriber('/turtlebot/camera/rgb/image_raw', Image, self.image_callback)
@@ -72,13 +85,23 @@ class Follower:
       # Return True once it arrives at goal
       print "At goal!" 
       self.atPoint = True
+      self.goalSeeking = False
       
 #####################################################################################
       
-  def setGoalPositions(self, data):
-      # loop through whole array and apply function
-      for i in self.goalPositions:
-          self.setWaypoint(i[0], i[1])
+#  def setGoalPositions(self, data):
+#      # Need to include logic here somewhere so waypoints aren't overwritten
+#      # Effective use and integration of flags 
+#      
+#      # Set object found to False as establishing new path 
+#      self.objectFound = False
+#      self.goalSeeking = True
+#      
+#      # loop through whole array and apply function
+#      for i in data:
+#          self.setWaypoint(i[0], i[1])
+#          self.counter = i
+#          print i
           
 #####################################################################################
   
@@ -87,26 +110,30 @@ class Follower:
       if colour == 'green' and infoFlag == False:
           self.greenFound = True
           print 'Green Found!'
+          self.atPoint = False
       # Blue
       elif colour == 'blue' and infoFlag == False: 
           self.blueFound = True
           print 'Blue Found!'
+          self.atPoint = False
       # Yellow
       elif colour == 'yellow' and infoFlag == False:
           self.yellowFound = True
           print 'Yellow Found!'
+          self.atPoint = False
       # Red
       elif colour == 'red' and infoFlag == False:
           self.redFound = True
           print 'Red Found!'
+          self.atPoint = False
       else:
           print 'No colour on spectrum found'
           
 #####################################################################################
           
-  def setMask(self, hsv, lowerBound, upperBound):
-      mask = cv2.inRange(hsv, lowerBound, upperBound)    
-      return mask
+#  def setMask(self, hsv, lowerBound, upperBound):
+#      mask = cv2.inRange(hsv, lowerBound, upperBound)    
+#      return mask
 
 ######################################################################################  
 
@@ -121,6 +148,14 @@ class Follower:
       h, w, d = image.shape
       
       if self.atPoint == True:
+          # Scan for colour          
+          
+          # If colour isn't found, publish next waypoint
+          
+          # If colour is found, head over and mark
+          # Set object Found to True as object has been found          
+          self.objectFound = True
+          
           if M['m00'] > 0:
               if min(self.distance) > 0.5 or math.isnan(min(self.distance)):  
                   
@@ -132,7 +167,7 @@ class Follower:
                   self.twist.linear.x = 0.6
                   self.twist.angular.z = -float(err) / 100
                   self.cmd_vel_pub.publish(self.twist)
-                  #self.atPoint = False
+                  
               
 #######################################################################################  
   def image_callback(self, msg):
@@ -142,8 +177,8 @@ class Follower:
     except self.bridge, e:
         print e
         
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)    
+ 
     ## Arrays to hold values 
     lowerBoundColours = [[40, 200, 100], [100, 200, 100], [25, 200, 100], [0, 210, 100]]
     upperBoundColours = [[60, 255, 255], [120, 255, 255], [30, 255, 255], [4, 255, 255]]
@@ -152,12 +187,8 @@ class Follower:
     combinedMasks = cv2.inRange(hsv, numpy.array([180, 255, 255]), numpy.array([180, 255, 255]))
     self.distance = 0    
     
-    
-    #   Upper and Lower bounds defined as
-#   [0] = Green
-#   [1] = Blue
-#   [2] = Yellow
-#   [3] = Red
+    #   Upper and Lower bounds defined as:
+    #   [0] = Green, [1] = Blue, [2] = Yellow, [3] = Red
     
     self.distance = self.laser.ranges
     
@@ -254,21 +285,52 @@ class Follower:
     cv2.imshow("Combined Masks", combinedMasks)
     cv2.waitKey(1)
     
-## Main function
+####################################################################################
+    
 if __name__ == "__main__":
-    rospy.init_node('Colour_Checker', anonymous = False)
-    W = Follower()
-
-    ## Here is where you tell it to do shit 
-    ## Use while loops
-    W.setGoalPositions(W.goalPositions)
-    
-    
-    # While blah
-   # while():
-        #do something
-    
-    # Keep client running
-    rospy.spin() 
-    
-    
+    try:
+        rospy.init_node('Colour_Checker', anonymous = False)
+        follower = Follower()
+        
+        count = 0
+        for i in follower.goalPositions:
+            print "Heading to Waypoint"
+            count + 1
+            
+            follower.setWaypoint(i[0], i[1])
+            follower.goalSeeking = True
+            while follower.goalSeeking == True:
+                # Call function to begin search and stuff
+                follower.image_callback()
+        
+        print "Journey is now complete"
+        
+        rospy.sleep(1)
+        # Keep client running
+        rospy.spin() 
+        cv2.destroyAllWindows()
+        
+    except rospy.ROSInterruptException:
+        rospy.loginfo("CTRL + C Caught, QUITTING")
+        
+####################################################################################    
+#        while(True):    
+#            # 1) Am I moving towards the goal? False - set goal, True - step 2
+#            if W.goalSeeking == False:
+#                # Arugments yet to be entered
+#                W.setWaypoint()
+#            if W.goalSeeking == True:
+#                # 2) Am I at the goal? False - rospy.sleep(1), - goal count, checking atPoint, True - Step 3, Scan
+#                if W.atPoint == False: 
+#                    # Sleep and wait till it's at point
+#                    rospy.sleep(1)
+#                if W.atPoint == True:
+#                   # W.control(cv2.moments(combinedMasks), hsv)
+#                    # 3) Have I found an object? False - set next goal, 
+#                    #    True - move towards it, register objects and remove from mask 
+#                    if W.objectFound == False:
+#                        #do something
+#                        W.setWaypoint()
+#                    if W.objectFound == True: 
+#                        # set next way point
+#                        W.setWaypoint()
